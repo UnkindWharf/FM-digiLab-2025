@@ -3,7 +3,9 @@ import os
 from typing import List, Dict, Tuple, Literal, NoReturn, Any
 
 # package imports
+import dill
 import numpy as np
+import pandas as pd
 from numpy.linalg import svd
 from sklearn.decomposition import TruncatedSVD
 
@@ -43,12 +45,12 @@ def preprocess_data(
     None
     """
     # load raw data
-    data = load_data(data_dirs=data_dirs)
+    filenames, labels, temperatures, data = load_data(data_dirs=data_dirs)
 
-    for sample in data:
-        # apply Wavelet denoising
-        sample["data"] = wavelet_denoise(
-            sample["data"],
+    # apply Wavelet denoising
+    for i in range(len(data)):
+        data[i] = wavelet_denoise(
+            data[i],
             wavelet=denoise_wavelet,
             level=denoise_level,
             method=denoise_method,
@@ -56,10 +58,61 @@ def preprocess_data(
             energy=denoise_energy,
         )
 
-        # apply truncated SVD
-        sample["data_svd"], svd = truncated_svd(sample["data"], svd_retained_variance)
+    # apply baseline subtraction to all defects and clean with 1 degree either side
+    bss_signal = []
+    bss_baseline = []
+    bss_labels = []
+    bss_temperatures = []
+    bss_data = []
 
-    # save processed data TODO
+    for i in range(len(data)):
+        for j in range(len(data)):
+            if (
+                (i != j)
+                and (labels[j] == 0)
+                and (temperatures[j] - 1 < temperatures[j] < temperatures[j] + 1)
+            ):
+                bss_signal.append(filenames[i])
+                bss_baseline.append(filenames[j])
+                bss_labels.append(labels[i])
+                bss_temperatures.append(temperatures[i] - temperatures[j])
+                bss_data.append(data[i] - data[j])
+
+    # apply truncated SVD to data
+    bss_data = np.vstack(bss_data)
+    bss_data_svd, svd = truncated_svd(bss_data, svd_retained_variance)
+
+    # save bss data
+    df_params = pd.DataFrame(
+        {
+            "filename_signal": bss_signal,
+            "filename_baseline": bss_baseline,
+            "label": bss_labels,
+            "temperature": bss_temperatures,
+        }
+    )
+    df_signal = pd.DataFrame(bss_data)
+    df_data = pd.concat([df_params, df_signal], axis=1)
+    df_data.to_csv(os.path.join(output_dir, "data.csv"))
+
+    # save svd data
+    df_params = pd.DataFrame(
+        {
+            "filename_signal": bss_signal,
+            "filename_baseline": bss_baseline,
+            "label": bss_labels,
+            "temperature": bss_temperatures,
+        }
+    )
+    df_signal = pd.DataFrame(bss_data_svd)
+    df_data = pd.concat([df_params, df_signal], axis=1)
+    df_data.to_csv(os.path.join(output_dir, "data_svd.csv"))
+
+    # save svd object
+    with open(os.path.join(output_dir, "svd.pkl"), "wb") as file:
+        dill.dump(svd, file)
+
+    return df_data
 
 
 def load_data(data_dirs: List[str]) -> List[Dict[str, Any]]:
@@ -77,40 +130,50 @@ def load_data(data_dirs: List[str]) -> List[Dict[str, Any]]:
 
     Return
     ------
-    List[Dict[str, np.ndarray]]
-        list with dictionaries with keys ["filename", "label", "temperature", "data"]
+    Tuple[List, List, List, List]
+        Tuple with lists of filename, label, temperature, data
     """
 
     # loading utility
     def load_dir(dir):
-        results = []
+        filenames = []
+        labels = []
+        temperatures = []
+        data = []
 
         for root, dirs, files in os.walk(dir):
             for file in files:
                 # extract raw signal
-                data = np.load(os.path.join(root, file))[1, :]
+                signal = np.load(os.path.join(root, file))[1:, :]
+                # sum all nodal values
+                signal = np.sum(signal, axis=0)
                 # extract temperature information
                 temp = float(file[-8:-4]) / 100
                 # extract label
                 label = 0 if "clean" in file else 1
                 # add to list
-                results.append(
-                    {
-                        "filename": file,
-                        "label": label,
-                        "temperature": temp,
-                        "data": data,
-                    }
-                )
+                filenames.append(file)
+                labels.append(label)
+                temperatures.append(temp)
+                data.append(signal)
 
-        return results
+        return filenames, labels, temperatures, data
 
     # process all provided directories
-    all_results = []
-    for data_dir in data_dirs:
-        all_results = all_results + load_dir(data_dir)
+    all_filenames = []
+    all_labels = []
+    all_temperatures = []
+    all_data = []
 
-    return all_results
+    for data_dir in data_dirs:
+        filenames, labels, temperatures, data = load_dir(data_dir)
+
+        all_filenames += filenames
+        all_labels += labels
+        all_temperatures += temperatures
+        all_data += data
+
+    return all_filenames, all_labels, all_temperatures, all_data
 
 
 def wavelet_denoise(
