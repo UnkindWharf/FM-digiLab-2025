@@ -1,5 +1,6 @@
 # don't upload raw data files
 /data/raw/*
+/data/processed/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
