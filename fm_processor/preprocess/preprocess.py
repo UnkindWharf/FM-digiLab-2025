@@ -1,9 +1,11 @@
 # standard imports
 import os
-from typing import List, Dict, Literal, NoReturn, Any
+from typing import List, Dict, Tuple, Literal, NoReturn, Any
 
 # package imports
 import numpy as np
+from numpy.linalg import svd
+from sklearn.decomposition import TruncatedSVD
 
 # local imports
 from .denoise import WaveletDenoising
@@ -14,9 +16,10 @@ def preprocess_data(
     output_dir: str,
     denoise_wavelet: str = "sym4",
     denoise_level: int = 12,
-    denoise_threshold: Literal["universal", "energy"] = "universal",
+    denoise_method: Literal["universal", "energy"] = "universal",
     denoise_thresholding: str = "soft",
     denoise_energy: float = 0.98,
+    svd_retained_variance: float = 0.999,
 ) -> NoReturn:
     """
     Load data, apply Wavelet denoising, and truncated SVD. Saves postprocessed data and
@@ -34,7 +37,6 @@ def preprocess_data(
         transformation is necessary because fast SVD uses random initialisations, so
         the transform must be kept for inverse projection into the original signal
         space.
-    denoise_level: int
 
     Return
     ------
@@ -45,10 +47,17 @@ def preprocess_data(
 
     for sample in data:
         # apply Wavelet denoising
-        sample["data"] = wavelet_denoise(sample["data"])
+        sample["data"] = wavelet_denoise(
+            sample["data"],
+            wavelet=denoise_wavelet,
+            level=denoise_level,
+            method=denoise_method,
+            thresholding=denoise_thresholding,
+            energy=denoise_energy,
+        )
 
         # apply truncated SVD
-        sample["data_svd"] = truncated_svd(sample["data"])
+        sample["data_svd"], svd = truncated_svd(sample["data"], svd_retained_variance)
 
     # save processed data TODO
 
@@ -95,6 +104,13 @@ def load_data(data_dirs: List[str]) -> List[Dict[str, Any]]:
                 )
 
         return results
+
+    # process all provided directories
+    all_results = []
+    for data_dir in data_dirs:
+        all_results = all_results + load_dir(data_dir)
+
+    return all_results
 
 
 def wavelet_denoise(
@@ -151,6 +167,39 @@ def wavelet_denoise(
 
 def truncated_svd(
     data: np.ndarray,
-    variance_retained_ratio: float = 0.999,
-):
-    pass  # TODO
+    retained_variance: float = 0.999,
+) -> Tuple[np.ndarray, TruncatedSVD]:
+    """
+    Compute truncated SVD of the data with a desired retained variance ratio
+    """
+    truncation_length = get_truncation_length(data, retained_variance)
+
+    svd = TruncatedSVD(n_components=truncation_length)
+    svd.fit(data)
+
+    # return data and SVD object
+    return svd.transform(data), svd
+
+
+def get_truncation_length(
+    data: np.ndarray,
+    retained_variance: float,
+) -> int:
+    """
+    Compute truncation length based on desired retained variance
+    """
+    # decompose with compact SVD
+    _, _, vh = svd(data, full_matrices=False)
+
+    # project data along singular vectors
+    Y_transformed = np.matmul(data, vh.T)
+
+    # calculate explained variance
+    explained_variance = np.var(Y_transformed, axis=0) / np.var(data, axis=0).sum()
+
+    # calculate truncation length
+    truncation_length = (
+        np.argmax((np.cumsum(explained_variance, axis=0) > retained_variance)) + 1
+    )
+
+    return truncation_length
