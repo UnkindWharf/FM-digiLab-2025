@@ -1,7 +1,7 @@
 # standard imports
 import argparse
 import os
-from typing import Tuple
+from typing import Tuple, Optional
 
 # package imports
 import numpy as np
@@ -22,7 +22,7 @@ def read_input() -> Tuple[str, str, str]:
     parser.add_argument(
         "data_path",
         type=str,
-        help="path to read test data .npy files.",
+        help="path to read test data .npy file.",
     )
     parser.add_argument(
         "model_dir",
@@ -30,27 +30,16 @@ def read_input() -> Tuple[str, str, str]:
         help="directory to load SVD and model pickle files",
     )
 
-    parser.add_argument(
-        "output_path",
-        type=str,
-        help="path to save output CSV. if not provided, results will be saved to model_dir",
-        default=None,
-    )
-
     args = parser.parse_args()
 
-    return args.data_path, args.model_dir, args.output_path
+    return args.data_path, args.model_dir
 
 
 if __name__ == "__main__":
     # Read input arguments
-    data_path, model_dir, output_path = read_input()
+    data_path, model_dir = read_input()
 
     # preprocess data
     pred = predict(data_path, model_dir)
 
-    # save results
-    if output_path is None:
-        output_path = os.path.join(model_dir, "inference.npy")
-
-    np.save(output_path, pred)
+    print(f"Classification result: {pred}")

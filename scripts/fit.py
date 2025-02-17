@@ -20,9 +20,11 @@ def read_input() -> Tuple[str, str]:
         type=str,
         help="directory to read raw .npy files.",
     )
+
     parser.add_argument(
         "model_type",
         type=str,
+        default="svc",
         help="""Model type to fit. Options: 
             "svc": Support Vector Classifier
             """,
