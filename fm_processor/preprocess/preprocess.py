@@ -15,7 +15,7 @@ from .denoise import WaveletDenoising
 
 
 def preprocess_data(
-    data_dirs: List[str],
+    data_dir: str,
     output_dir: str,
     denoise_wavelet: str = "sym4",
     denoise_level: int = 12,
@@ -31,8 +31,8 @@ def preprocess_data(
 
     Parameters
     ----------
-    data_dirs: List[str]
-        list of folders to load the .NPY raw data. All files starting with "clean_" are
+    data_dir: str
+        directory to load the .NPY raw data. All files starting with "clean_" are
         labelled clean signals, everything else is labelled defect. All files expected
         to end with _xxxx.npy, where xxxx denotes the temperature.
     output_dir: str
@@ -48,8 +48,8 @@ def preprocess_data(
     """
     # load raw data
     if debug:
-        logger.info(f"Reading raw data from {data_dirs} ...")
-    filenames, labels, temperatures, data = load_data(data_dirs=data_dirs)
+        logger.info(f"Reading raw data from {data_dir} ...")
+    filenames, labels, temperatures, data = load_data(data_dir=data_dir)
 
     # apply Wavelet denoising
     if debug:
@@ -135,7 +135,7 @@ def preprocess_data(
         logger.info("Data preprocessing finished.")
 
 
-def load_data(data_dirs: List[str]) -> List[Dict[str, Any]]:
+def load_data(data_dir: str) -> List[Dict[str, Any]]:
     """
     Load raw data to memory. All files starting with "clean_" are
     labelled clean signals, everything else is labelled defect. All files expected
@@ -145,8 +145,8 @@ def load_data(data_dirs: List[str]) -> List[Dict[str, Any]]:
 
     Parameters
     ----------
-    data_dirs: List[str]
-        list of folders to load the .NPY raw data.
+    data_dirs: str
+        directory to load the .NPY raw data.
 
     Return
     ------
@@ -179,21 +179,10 @@ def load_data(data_dirs: List[str]) -> List[Dict[str, Any]]:
 
         return filenames, labels, temperatures, data
 
-    # process all provided directories
-    all_filenames = []
-    all_labels = []
-    all_temperatures = []
-    all_data = []
+    # process provided directory
+    filenames, labels, temperatures, data = load_dir(data_dir)
 
-    for data_dir in data_dirs:
-        filenames, labels, temperatures, data = load_dir(data_dir)
-
-        all_filenames += filenames
-        all_labels += labels
-        all_temperatures += temperatures
-        all_data += data
-
-    return all_filenames, all_labels, all_temperatures, all_data
+    return filenames, labels, temperatures, data
 
 
 def wavelet_denoise(
