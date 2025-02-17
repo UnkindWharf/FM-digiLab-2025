@@ -1,6 +1,6 @@
 # standard imports
 import os
-from typing import Union, Literal
+from typing import List, Literal
 
 # package imports
 import numpy as np
@@ -11,8 +11,74 @@ from .loading import load_model, load_svd
 from ..preprocess import wavelet_denoise
 
 
+def predict_file(data_path: str, model_dir: str, model_type: str = "svc", **kwargs):
+    """
+    Run inference on one test data file
+
+    Parameters
+    ----------
+    data: str
+        a string to a .npy file with the test data.
+    model_dir: str
+        directory with model pickle file
+    model_type: str
+        Model type to load. Options:
+            "svc": Support Vector Classifier
+    """
+    # extract temperature
+    temperature = float(data_path[-8:-4]) / 100
+
+    # load data
+    data = np.sum(np.load(data_path)[1:, :], axis=0)
+
+    return predict(
+        data=data,
+        temperature=[temperature],
+        model_dir=model_dir,
+        model_type=model_type,
+        **kwargs
+    )
+
+
+def predict_array(
+    data: List[np.ndarray],
+    temperatures: List[float],
+    model_dir: str,
+    model_type: str = "svc",
+    **kwargs
+):
+    """
+    Run inference on test data array
+
+    Parameters
+    ----------
+    data: numpy.ndarray
+        2D numpy array with test data
+    temperatures: List[float]
+        list of temperatures for each row of data matrix
+    model_dir: str
+        directory with model pickle file
+    model_type: str
+        Model type to load. Options:
+            "svc": Support Vector Classifier
+    """
+    preds = []
+
+    for i in range(data.shape[0]):
+        preds.append(
+            predict(
+                data=data[i],
+                temperature=temperatures[i],
+                model_dir=model_dir,
+                model_type=model_type,
+                **kwargs
+            )
+        )
+
+
 def predict(
-    data: str,
+    data: np.ndarray,
+    temperature: float,
     model_dir: str,
     model_type: str = "svc",
     denoise_wavelet: str = "sym4",
@@ -22,23 +88,9 @@ def predict(
     denoise_energy: float = 0.98,
 ):
     """
-    Run inference on test data
-
-    Parameters
-    ----------
-    data: Union[str, numpy.ndarray]
-        a string to a .npy file with the test data, or a nunmpy array.
-    model_dir: str
-        directory with model pickle file
-    model_type: str
-        Model type to load. Options:
-            "svc": Support Vector Classifier
+    Predict one sample of data in numpy format
     """
-    # extract temperature
-    temperature = float(data[-8:-4]) / 100
-
-    # load data
-    data = np.sum(np.load(data)[1:, :], axis=0)
+    assert data.ndim == 1, "Data array must be 1D"
 
     # denoise data
     data = wavelet_denoise(
@@ -71,4 +123,4 @@ def predict(
     # inference
     pred = model.predict(svd.transform(data))
 
-    return pred
+    return pred[0]

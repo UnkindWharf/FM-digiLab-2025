@@ -7,7 +7,7 @@ from typing import Tuple, Optional
 import numpy as np
 
 # local imports
-from fm_processor import predict
+from fm_processor import predict_file
 
 
 def read_input() -> Tuple[str, str, str]:
@@ -40,6 +40,6 @@ if __name__ == "__main__":
     data_path, model_dir = read_input()
 
     # preprocess data
-    pred = predict(data_path, model_dir)
+    pred = predict_file(data_path, model_dir)
 
     print(f"Classification result: {pred}")
