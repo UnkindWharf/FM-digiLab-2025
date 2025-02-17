@@ -37,8 +37,10 @@ def build_classifier_SVC(
 
     # load data
     df = pd.read_csv(data_path, index_col=0)
-    X = df[df.columns[5:]].values
+    X = df[df.columns[4:]].values
     y = df["label"].values
+
+    print(X)
 
     # fit model
     model = SVC(kernel=kernel, C=C)

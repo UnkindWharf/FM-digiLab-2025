@@ -103,14 +103,14 @@ def predict(
     )
 
     # read training data as baseline database
-    df_train = pd.read_csv(os.path.join(model_dir, "bss.csv"), index_col=0)
+    df_train = pd.read_csv(os.path.join(model_dir, "data.csv"), index_col=0)
     # get closest clean signal in terms of temperature
     idx = (
         (temperature - df_train.loc[df_train.label == 0].temperature).abs().argsort()[0]
     )
     # extract signal
     baseline_sample = np.hstack(
-        df_train.loc[df_train.label == 0].iloc[idx][df_train.columns[5:]].values
+        df_train.loc[df_train.label == 0].iloc[idx][df_train.columns[3:]].values
     )
 
     # baseline subtraction
@@ -120,7 +120,13 @@ def predict(
     svd = load_svd(model_dir)
     model = load_model(model_dir, model_type)
 
+    # transform signal
+    data = svd.transform(data)
+
+    # prepend temperature column
+    data = np.hstack([[temperature], data])
+
     # inference
-    pred = model.predict(svd.transform(data))
+    pred = model.predict(data)
 
     return pred[0]

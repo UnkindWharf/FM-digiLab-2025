@@ -114,8 +114,8 @@ def preprocess_data(
             "filename_signal": bss_signal,
             "filename_baseline": bss_baseline,
             "label": bss_labels,
-            "temperature": bss_temperatures,
             "temperature_diff": bss_temp_diff,
+            "temperature": bss_temperatures,
         }
     )
     df_signal = pd.DataFrame(bss_data)
