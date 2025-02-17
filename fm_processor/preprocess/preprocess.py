@@ -58,12 +58,25 @@ def preprocess_data(
             energy=denoise_energy,
         )
 
+    # save raw data before baseline subtraction
+    df_params = pd.DataFrame(
+        {
+            "filename": filenames,
+            "label": labels,
+            "temperature": temperatures,
+        }
+    )
+    df_signal = pd.DataFrame(data)
+    df_data = pd.concat([df_params, df_signal], axis=1)
+    df_data.to_csv(os.path.join(output_dir, "data.csv"))
+
     # apply baseline subtraction to all defects and clean with 1 degree either side
-    bss_signal = []
-    bss_baseline = []
-    bss_labels = []
-    bss_temperatures = []
-    bss_data = []
+    bss_signal = []  # nodal summed signals
+    bss_baseline = []  # nodal summed baseline
+    bss_labels = []  # defect=1, clean=0
+    bss_temperatures = []  # signal temp
+    bss_temp_diff = []  # signal temp - clean temp
+    bss_data = []  # signal - clean
 
     for i in range(len(data)):
         for j in range(len(data)):
@@ -75,7 +88,8 @@ def preprocess_data(
                 bss_signal.append(filenames[i])
                 bss_baseline.append(filenames[j])
                 bss_labels.append(labels[i])
-                bss_temperatures.append(temperatures[i] - temperatures[j])
+                bss_temperatures.append(temperatures[i])
+                bss_temp_diff.append(temperatures[i] - temperatures[j])
                 bss_data.append(data[i] - data[j])
 
     # apply truncated SVD to data
@@ -89,24 +103,17 @@ def preprocess_data(
             "filename_baseline": bss_baseline,
             "label": bss_labels,
             "temperature": bss_temperatures,
+            "temperature_diff": bss_temp_diff,
         }
     )
     df_signal = pd.DataFrame(bss_data)
     df_data = pd.concat([df_params, df_signal], axis=1)
-    df_data.to_csv(os.path.join(output_dir, "data.csv"))
+    df_data.to_csv(os.path.join(output_dir, "bss.csv"))
 
     # save svd data
-    df_params = pd.DataFrame(
-        {
-            "filename_signal": bss_signal,
-            "filename_baseline": bss_baseline,
-            "label": bss_labels,
-            "temperature": bss_temperatures,
-        }
-    )
     df_signal = pd.DataFrame(bss_data_svd)
     df_data = pd.concat([df_params, df_signal], axis=1)
-    df_data.to_csv(os.path.join(output_dir, "data_svd.csv"))
+    df_data.to_csv(os.path.join(output_dir, "bss_svd.csv"))
 
     # save svd object
     with open(os.path.join(output_dir, "svd.pkl"), "wb") as file:
@@ -152,7 +159,7 @@ def load_data(data_dirs: List[str]) -> List[Dict[str, Any]]:
                 # extract label
                 label = 0 if "clean" in file else 1
                 # add to list
-                filenames.append(file)
+                filenames.append(os.path.join(root, file))
                 labels.append(label)
                 temperatures.append(temp)
                 data.append(signal)
