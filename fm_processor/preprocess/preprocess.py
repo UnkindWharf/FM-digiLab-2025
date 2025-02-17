@@ -10,6 +10,7 @@ from numpy.linalg import svd
 from sklearn.decomposition import TruncatedSVD
 
 # local imports
+from ..utils import logger
 from .denoise import WaveletDenoising
 
 
@@ -22,6 +23,7 @@ def preprocess_data(
     denoise_thresholding: str = "soft",
     denoise_energy: float = 0.98,
     svd_retained_variance: float = 0.999,
+    debug: bool = True,
 ) -> NoReturn:
     """
     Load data, apply Wavelet denoising, and truncated SVD. Saves postprocessed data and
@@ -45,9 +47,13 @@ def preprocess_data(
     None
     """
     # load raw data
+    if debug:
+        logger.info(f"Reading raw data from {data_dirs} ...")
     filenames, labels, temperatures, data = load_data(data_dirs=data_dirs)
 
     # apply Wavelet denoising
+    if debug:
+        logger.info("Applying Wavelet denoising...")
     for i in range(len(data)):
         data[i] = wavelet_denoise(
             data[i],
@@ -71,6 +77,8 @@ def preprocess_data(
     df_data.to_csv(os.path.join(output_dir, "data.csv"))
 
     # apply baseline subtraction to all defects and clean with 1 degree either side
+    if debug:
+        logger.info("Applying baseline subtraction...")
     bss_signal = []  # nodal summed signals
     bss_baseline = []  # nodal summed baseline
     bss_labels = []  # defect=1, clean=0
@@ -93,10 +101,14 @@ def preprocess_data(
                 bss_data.append(data[i] - data[j])
 
     # apply truncated SVD to data
+    if debug:
+        logger.info("Applying SVD...")
     bss_data = np.vstack(bss_data)
     bss_data_svd, svd = truncated_svd(bss_data, svd_retained_variance)
 
     # save bss data
+    if debug:
+        logger.info(f"Saving preprocessed data to {output_dir} ...")
     df_params = pd.DataFrame(
         {
             "filename_signal": bss_signal,
@@ -119,7 +131,8 @@ def preprocess_data(
     with open(os.path.join(output_dir, "svd.pkl"), "wb") as file:
         dill.dump(svd, file)
 
-    return df_data
+    if debug:
+        logger.info("Data preprocessing finished.")
 
 
 def load_data(data_dirs: List[str]) -> List[Dict[str, Any]]:
