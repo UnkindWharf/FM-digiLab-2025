@@ -9,7 +9,7 @@ from fm_processor import preprocess_data
 
 def read_input() -> Tuple[str, str]:
     """
-    Read the category and node type from the command line arguments.
+    Read script inputs
     """
 
     parser = argparse.ArgumentParser(
