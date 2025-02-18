@@ -96,3 +96,4 @@ The script will print out a classification label (Defect = 1, Clean = 0)
 #   TODO
 - Allow batch inference for all files in folder
 - Decouple temperature BSS logic from inference function
+- Add Bernoulli classifier
