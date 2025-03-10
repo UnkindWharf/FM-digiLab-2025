@@ -33,7 +33,7 @@ def predict_file(data_path: str, model_dir: str, model_type: str = "svc", **kwar
 
     return predict(
         data=data,
-        temperature=[temperature],
+        temperature=temperature,
         model_dir=model_dir,
         model_type=model_type,
         **kwargs
@@ -106,7 +106,10 @@ def predict(
     df_train = pd.read_csv(os.path.join(model_dir, "data.csv"), index_col=0)
     # get closest clean signal in terms of temperature
     idx = (
-        (temperature - df_train.loc[df_train.label == 0].temperature).abs().argsort()[0]
+        (temperature - df_train.loc[df_train.label == 0].temperature)
+        .abs()
+        .argsort()
+        .values[0]
     )
     # extract signal
     baseline_sample = np.hstack(
@@ -124,7 +127,7 @@ def predict(
     data = svd.transform(data)
 
     # prepend temperature column
-    data = np.hstack([[temperature], data])
+    data = np.hstack([[[temperature]], data])
 
     # inference
     pred = model.predict(data)
