@@ -6,14 +6,7 @@ from typing import NoReturn
 import dill
 import numpy as np
 import pandas as pd
-import torch
-from gpytorch.models import ApproximateGP
-from gpytorch.means import ConstantMean
-from gpytorch.kernels import ScaleKernel, MaternKernel
-from gpytorch.distributions import MultivariateNormal
-from gpytorch.likelihoods import BernoulliLikelihood
-from gpytorch.mlls import VariationalELBO
-from gpytorch.variational import CholeskyVariationalDistribution, VariationalStrategy
+from sklearn.gaussian_process import GaussianProcessClassifier
 
 # local imports
 from ..utils import logger
@@ -26,14 +19,7 @@ class GP(Classifier):
         """
         Predict with GP
         """
-        X = torch.from_numpy(X.astype(np.float32))
-
-        self.kwargs["likelihood"].eval()
-        self.kwargs["model"].eval()
-
-        preds = self.kwargs["likelihood"](self.kwargs["model"](X))
-
-        return preds.mean.detach().numpy()
+        return self.kwargs["model"].predict(X)
 
 
 def build_classifier_GP(
@@ -64,43 +50,14 @@ def build_classifier_GP(
     X = df[df.columns[4:]].values.astype(np.float32)
     y = df["label"].values.astype(np.float32)
 
-    X = torch.from_numpy(X)
-    y = torch.from_numpy(y)
-
     # build model
-    model = GPClassificationModel(X)
-    likelihood = BernoulliLikelihood()
+    model = GaussianProcessClassifier()
 
     # fit model
-    model.train()
-    likelihood.train()
-
-    # Use the adam optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
-
-    # "Loss" for GPs - the marginal log likelihood
-    # num_data refers to the number of training datapoints
-    mll = VariationalELBO(likelihood, model, y.numel())
-
-    for i in range(training_iterations):
-        # Zero backpropped gradients from previous iteration
-        optimizer.zero_grad()
-        # Get predictive output
-        output = model(X)
-        # Calc loss and backprop gradients
-        loss = -mll(output, y)
-        loss.backward()
-        print("Iter %d/%d - Loss: %.3f" % (i + 1, training_iterations, loss.item()))
-        optimizer.step()
-
-    model.eval()
-    likelihood.eval()
+    model.fit(X=X, y=y)
 
     # convert to internal abstraction
-    gp = GP(
-        model=model,
-        likelihood=likelihood,
-    )
+    gp = GP(model=model)
 
     # save model as pickle
     model_path = os.path.join(data_dir, "model_gp.pkl")
@@ -110,27 +67,3 @@ def build_classifier_GP(
 
     with open(model_path, "wb") as file:
         dill.dump(gp, file)
-
-
-class GPClassificationModel(ApproximateGP):
-    """
-    https://docs.gpytorch.ai/en/v1.13/examples/04_Variational_and_Approximate_GPs/Non_Gaussian_Likelihoods.html
-    """
-
-    def __init__(self, train_x):
-        """
-        Initialise the model and variational distribution
-        """
-        variational_distribution = CholeskyVariationalDistribution(train_x.size(0))
-        variational_strategy = VariationalStrategy(
-            self, train_x, variational_distribution, learn_inducing_locations=False
-        )
-        super(GPClassificationModel, self).__init__(variational_strategy)
-        self.mean_module = ConstantMean()
-        self.covar_module = ScaleKernel(MaternKernel(nu=1.5))
-
-    def forward(self, x):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x)
-        latent_pred = MultivariateNormal(mean_x, covar_x)
-        return latent_pred
