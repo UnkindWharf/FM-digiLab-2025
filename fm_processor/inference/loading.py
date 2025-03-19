@@ -24,7 +24,8 @@ def load_model(
     # load support vector classifier
     if model_type == "svc":
         path = os.path.join(path, "model_svc.pkl")
-    # TODO add a few more models
+    elif model_type == "gp":
+        path = os.path.join(path, "model_gp.pkl")
 
     with open(path, "rb") as file:
         obj = dill.load(file)

@@ -4,11 +4,22 @@ from typing import NoReturn
 
 # package imports
 import dill
+import numpy as np
 import pandas as pd
 from sklearn.svm import SVC
 
 # local imports
 from ..utils import logger
+from .classifier import Classifier
+
+
+class SVC(Classifier):
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """
+        Predict with SVC
+        """
+        return self.kwargs["model"].predict(X)
 
 
 def build_classifier_SVC(
@@ -40,11 +51,12 @@ def build_classifier_SVC(
     X = df[df.columns[4:]].values
     y = df["label"].values
 
-    print(X)
-
     # fit model
     model = SVC(kernel=kernel, C=C)
     model.fit(X=X, y=y)
+
+    # convert to internal abstraction
+    model = SVC(model=model)
 
     # save model as pickle
     model_path = os.path.join(data_dir, "model_svc.pkl")

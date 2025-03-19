@@ -14,6 +14,11 @@ scikit-learn = "^1.6.1"
 pywavelets = "^1.8.0"
 matplotlib = "^3.10.0"
 dill = "^0.3.9"
+plotly = "5.24.1"
+anywidget = "^0.9.15"
+jupyterlab-widgets = "^3.0.13"
+jupyterlab = "^4.3.5"
+gpytorch = "^1.14"
 
 
 [build-system]

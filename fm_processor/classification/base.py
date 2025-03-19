@@ -1,8 +1,3 @@
-# standard imports
-from typing import Union
-
-# package imports
-
 # local imports
 from .svc import build_classifier_SVC
 
