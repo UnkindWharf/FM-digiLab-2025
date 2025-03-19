@@ -27,6 +27,7 @@ def read_input() -> Tuple[str, str]:
         default="svc",
         help="""Model type to fit. Options: 
             "svc": Support Vector Classifier
+            "gp": Bernoulli Gaussian Process
             """,
     )
 

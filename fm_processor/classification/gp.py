@@ -26,11 +26,14 @@ class GP(Classifier):
         """
         Predict with GP
         """
-        X = torch.from_numpy(X)
+        X = torch.from_numpy(X.astype(np.float32))
+
+        self.kwargs["likelihood"].eval()
+        self.kwargs["model"].eval()
 
         preds = self.kwargs["likelihood"](self.kwargs["model"](X))
 
-        return preds.numpy()
+        return preds.mean.detach().numpy()
 
 
 def build_classifier_GP(
@@ -54,12 +57,12 @@ def build_classifier_GP(
     data_path = os.path.join(data_dir, "bss_svd.csv")
 
     if debug:
-        logger.info(f"Training SVC on {data_path}...")
+        logger.info(f"Training GP on {data_path}...")
 
     # load data
     df = pd.read_csv(data_path, index_col=0)
-    X = df[df.columns[4:]].values
-    y = df["label"].values
+    X = df[df.columns[4:]].values.astype(np.float32)
+    y = df["label"].values.astype(np.float32)
 
     X = torch.from_numpy(X)
     y = torch.from_numpy(y)
@@ -94,7 +97,7 @@ def build_classifier_GP(
     likelihood.eval()
 
     # convert to internal abstraction
-    gp = Classifier(
+    gp = GP(
         model=model,
         likelihood=likelihood,
     )

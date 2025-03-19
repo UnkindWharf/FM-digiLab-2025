@@ -6,7 +6,7 @@ from typing import NoReturn
 import dill
 import numpy as np
 import pandas as pd
-from sklearn.svm import SVC
+from sklearn.svm import SVC as SVC_sk
 
 # local imports
 from ..utils import logger
@@ -52,7 +52,7 @@ def build_classifier_SVC(
     y = df["label"].values
 
     # fit model
-    model = SVC(kernel=kernel, C=C)
+    model = SVC_sk(kernel=kernel, C=C)
     model.fit(X=X, y=y)
 
     # convert to internal abstraction

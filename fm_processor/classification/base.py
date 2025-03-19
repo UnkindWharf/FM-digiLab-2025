@@ -1,5 +1,6 @@
 # local imports
 from .svc import build_classifier_SVC
+from .gp import build_classifier_GP
 
 
 def build_classifier(
@@ -21,3 +22,5 @@ def build_classifier(
     """
     if model_type == "svc":
         build_classifier_SVC(data_dir=data_dir, **kwargs)
+    elif model_type == "gp":
+        build_classifier_GP(data_dir=data_dir, **kwargs)
