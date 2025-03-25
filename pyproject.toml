@@ -19,6 +19,7 @@ anywidget = "^0.9.15"
 jupyterlab-widgets = "^3.0.13"
 jupyterlab = "^4.3.5"
 gpytorch = "^1.14"
+botorch = "^0.13.0"
 
 
 [build-system]
